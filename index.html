@@ -61,6 +61,41 @@
         margin-top: 12px;
       }
 
+      .collapsible-card {
+        padding: 0;
+      }
+
+      .collapsible-trigger {
+        width: 100%;
+        background: transparent;
+        border: none;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 1.05rem;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .collapsible-trigger:hover {
+        background: rgba(27, 58, 138, 0.05);
+      }
+
+      .collapsible-icon {
+        transition: transform 0.2s ease;
+        font-size: 1.2rem;
+      }
+
+      .collapsible-card.is-collapsed .collapsible-icon {
+        transform: rotate(-90deg);
+      }
+
+      .collapsible-panel {
+        padding: 0 16px 16px;
+      }
+
       .meta-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -982,90 +1017,108 @@
         </p>
       </header>
 
-      <section class="meta-card">
-        <h2>Mode d'emploi simplifié</h2>
-        <p>
-          Ce site enregistre vos heures et vos tickets carburant directement sur
-          votre appareil (aucune connexion nécessaire). Voici comment procéder :
-        </p>
-        <!-- Début : fonctionnalités PWA / ajout à l'écran d'accueil -->
-        <div class="pwa-install-container">
-          <button id="btn-install" class="btn-install" hidden>
-            <span aria-hidden="true">📲</span>
-            Ajouter à l’écran d’accueil
-          </button>
+      <section class="meta-card collapsible-card">
+        <button
+          type="button"
+          class="collapsible-trigger"
+          data-collapse-target="collapse-mode-emploi"
+        >
+          <span>Mode d'emploi simplifié</span>
+          <span class="collapsible-icon" aria-hidden="true">▾</span>
+        </button>
+        <div class="collapsible-panel" id="collapse-mode-emploi">
+          <p>
+            Ce site enregistre vos heures et vos tickets carburant directement sur
+            votre appareil (aucune connexion nécessaire). Voici comment procéder :
+          </p>
+          <!-- Début : fonctionnalités PWA / ajout à l'écran d'accueil -->
+          <div class="pwa-install-container">
+            <button id="btn-install" class="btn-install" hidden>
+              <span aria-hidden="true">📲</span>
+              Ajouter à l’écran d’accueil
+            </button>
+          </div>
+          <div id="ios-a2hs-hint" class="ios-a2hs-hint" hidden>
+            <button type="button" aria-label="Masquer le rappel" data-ios-hint-close>&times;</button>
+            Pour ajouter ce planning sur votre écran d’accueil iPhone ou iPad&nbsp;:
+            ouvrez le menu <strong>Partager</strong> de Safari puis choisissez
+            <strong>«&nbsp;Sur l’écran d’accueil&nbsp;»</strong>.
+          </div>
+          <!-- Fin : fonctionnalités PWA / ajout à l'écran d'accueil -->
+          <ul>
+            <li>
+              <strong>Navigation simple</strong> : les grands boutons en haut de la page
+              font défiler directement vers la journée choisie, la partie carburant
+              ou la prévisualisation.
+            </li>
+            <li>
+              <strong>Remplis et respire</strong> : horaires, clients, tournées…
+              tout est sauvegardé automatiquement sur l’appareil.
+            </li>
+            <li>
+              <strong>Doutes ?</strong> Les boutons bleus
+              <em>Enregistrer vos données</em> et <em>Charger votre planning</em>
+              te permettent de récupérer ou restaurer un fichier JSON quand tu veux.
+            </li>
+            <li>
+              <strong>Messages chauffeur</strong> : le bouton ✉️ en bas à droite ouvre
+              une mini-console pour pré-remplir un SMS, choisir un destinataire et copier
+              des modèles rapides.
+            </li>
+            <li>
+              <strong>Tickets gasoil</strong> : dans la section « Carburant », saisis chaque
+              plein (date, véhicule, montant) et ajoute la photo du ticket. Utilise le bouton
+              « Aperçu des tickets » pour vérifier les images avant impression.
+            </li>
+            <li>
+              <strong>Impressions rapides</strong> : « Imprimer la semaine » sort le planning A4 paysage,
+              « Imprimer les tickets » génère la fiche carburant dédiée.
+            </li>
+            <li>
+              <strong>Envie de repartir de zéro ?</strong> Le bouton
+              <em>Réinitialiser la semaine</em> nettoie tout en un clic (pense à exporter avant !).
+            </li>
+          </ul>
         </div>
-        <div id="ios-a2hs-hint" class="ios-a2hs-hint" hidden>
-          <button type="button" aria-label="Masquer le rappel" data-ios-hint-close>&times;</button>
-          Pour ajouter ce planning sur votre écran d’accueil iPhone ou iPad&nbsp;:
-          ouvrez le menu <strong>Partager</strong> de Safari puis choisissez
-          <strong>«&nbsp;Sur l’écran d’accueil&nbsp;»</strong>.
-        </div>
-        <!-- Fin : fonctionnalités PWA / ajout à l'écran d'accueil -->
-        <ul>
-          <li>
-            <strong>Navigation simple</strong> : les grands boutons en haut de la page
-            font défiler directement vers la journée choisie, la partie carburant
-            ou la prévisualisation.
-          </li>
-          <li>
-            <strong>Remplis et respire</strong> : horaires, clients, tournées…
-            tout est sauvegardé automatiquement sur l’appareil.
-          </li>
-          <li>
-            <strong>Doutes ?</strong> Les boutons bleus
-            <em>Enregistrer vos données</em> et <em>Charger votre planning</em>
-            te permettent de récupérer ou restaurer un fichier JSON quand tu veux.
-          </li>
-          <li>
-            <strong>Messages chauffeur</strong> : le bouton ✉️ en bas à droite ouvre
-            une mini-console pour pré-remplir un SMS, choisir un destinataire et copier
-            des modèles rapides.
-          </li>
-          <li>
-            <strong>Tickets gasoil</strong> : dans la section « Carburant », saisis chaque
-            plein (date, véhicule, montant) et ajoute la photo du ticket. Utilise le bouton
-            « Aperçu des tickets » pour vérifier les images avant impression.
-          </li>
-          <li>
-            <strong>Impressions rapides</strong> : « Imprimer la semaine » sort le planning A4 paysage,
-            « Imprimer les tickets » génère la fiche carburant dédiée.
-          </li>
-          <li>
-            <strong>Envie de repartir de zéro ?</strong> Le bouton
-            <em>Réinitialiser la semaine</em> nettoie tout en un clic (pense à exporter avant !).
-          </li>
-        </ul>
       </section>
 
-      <section class="meta-card">
-        <h2>Organisation des fichiers</h2>
-        <p>
-          Toutes vos saisies restent mémorisées automatiquement sur l’appareil, même si vous fermez
-          la page. Pour être 100% tranquille (changement de téléphone, nettoyage du navigateur, partage
-          avec le bureau), exportez malgré tout un fichier JSON grâce au bouton
-          <strong>Enregistrer vos données</strong> puis rangez-le dans l’arborescence ci-dessous.
-        </p>
-        <p>
-          1. Téléchargez la structure de dossier recommandée.<br />
-          2. Placez vos fichiers exportés dans <em>FrigoEst/Plannings</em> et vos tickets carburant
-          dans <em>FrigoEst/TicketsCarburant</em>.<br />
-          3. Archivez les semaines précédentes dans <em>FrigoEst/Archives</em> si besoin.<br />
-          4. Le lendemain, utilisez <strong>Charger votre planning</strong> pour sélectionner le fichier JSON
-          stocké dans le dossier.
-        </p>
-        <div class="file-actions">
-          <a class="btn btn-secondary" href="structure_frigo_est.zip" download>
-            Télécharger le dossier FrigoEst (ZIP)
-          </a>
-          <button class="btn btn-primary" type="button" id="open-file-manager">
-            Ouvrir les fichiers téléchargés
-          </button>
+      <section class="meta-card collapsible-card">
+        <button
+          type="button"
+          class="collapsible-trigger"
+          data-collapse-target="collapse-organisation"
+        >
+          <span>Organisation des fichiers</span>
+          <span class="collapsible-icon" aria-hidden="true">▾</span>
+        </button>
+        <div class="collapsible-panel" id="collapse-organisation">
+          <p>
+            Toutes vos saisies restent mémorisées automatiquement sur l’appareil, même si vous fermez
+            la page. Pour être 100% tranquille (changement de téléphone, nettoyage du navigateur, partage
+            avec le bureau), exportez malgré tout un fichier JSON grâce au bouton
+            <strong>Enregistrer vos données</strong> puis rangez-le dans l’arborescence ci-dessous.
+          </p>
+          <p>
+            1. Téléchargez la structure de dossier recommandée.<br />
+            2. Placez vos fichiers exportés dans <em>FrigoEst/Plannings</em> et vos tickets carburant
+            dans <em>FrigoEst/TicketsCarburant</em>.<br />
+            3. Archivez les semaines précédentes dans <em>FrigoEst/Archives</em> si besoin.<br />
+            4. Le lendemain, utilisez <strong>Charger votre planning</strong> pour sélectionner le fichier JSON
+            stocké dans le dossier.
+          </p>
+          <div class="file-actions">
+            <a class="btn btn-secondary" href="structure_frigo_est.zip" download>
+              Télécharger le dossier FrigoEst (ZIP)
+            </a>
+            <button class="btn btn-primary" type="button" id="open-file-manager">
+              Ouvrir les fichiers téléchargés
+            </button>
+          </div>
+          <p class="file-reminder">
+            Conseil : après chaque export, ouvrez vos téléchargements et déplacez
+            manuellement le fichier dans le dossier <em>FrigoEst</em> approprié.
+          </p>
         </div>
-        <p class="file-reminder">
-          Conseil : après chaque export, ouvrez vos téléchargements et déplacez
-          manuellement le fichier dans le dossier <em>FrigoEst</em> approprié.
-        </p>
       </section>
 
       <section class="meta-card">
@@ -3143,6 +3196,26 @@
           : "Afficher l'aperçu des tickets";
       }
 
+      // Transforme les sections "Mode d'emploi" et "Organisation" en menus déroulants.
+      function setupCollapsibleSections() {
+        document.querySelectorAll(".collapsible-trigger").forEach((trigger) => {
+          const panelId = trigger.dataset.collapseTarget;
+          const panel = document.getElementById(panelId);
+          const container = trigger.closest(".collapsible-card");
+          if (!panel || !container) return;
+          trigger.setAttribute("aria-controls", panelId);
+          panel.hidden = false;
+          trigger.setAttribute("aria-expanded", "true");
+          container.classList.toggle("is-collapsed", panel.hidden);
+          trigger.addEventListener("click", () => {
+            panel.hidden = !panel.hidden;
+            const isOpen = !panel.hidden;
+            trigger.setAttribute("aria-expanded", String(isOpen));
+            container.classList.toggle("is-collapsed", !isOpen);
+          });
+        });
+      }
+
       // Branche les boutons "Enregistrer/Charger" et les actions associées.
       function setupSaveLoadButtons() {
         const importInput = document.getElementById("import-input");
@@ -3429,6 +3502,7 @@
         attachNavigation();
         setupNavToggle();
         setupFuelPreviewToggle();
+        setupCollapsibleSections();
         setupSaveLoadButtons();
         setupDriverCommunication();
         const activeBtn = document.querySelector(".tabs button.active");
