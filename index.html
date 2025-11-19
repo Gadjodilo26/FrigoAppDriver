@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1b3a8a" />
     <title>Suivi hebdomadaire</title>
+    <link rel="manifest" href="manifest.webmanifest" />
     <style>
       :root {
         font-family: "Segoe UI", Arial, sans-serif;
@@ -205,6 +207,58 @@
         background: #e2e8f0;
         color: #1f2937;
       }
+
+      /* Début : fonctionnalités PWA / ajout à l'écran d'accueil */
+      .pwa-install-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 12px 0;
+      }
+
+      .btn-install {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-weight: 600;
+        background: #1b3a8a;
+        color: #fff;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .btn-install[hidden] {
+        display: none;
+      }
+
+      .ios-a2hs-hint {
+        position: relative;
+        padding: 12px 16px;
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        color: #7c2d12;
+      }
+
+      .ios-a2hs-hint strong {
+        color: #92400e;
+      }
+
+      .ios-a2hs-hint button {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        border: none;
+        background: transparent;
+        font-size: 1.1rem;
+        cursor: pointer;
+        color: #92400e;
+      }
+      /* Fin : fonctionnalités PWA / ajout à l'écran d'accueil */
 
       .preview-controls {
         display: grid;
@@ -934,6 +988,20 @@
           Ce site enregistre vos heures et vos tickets carburant directement sur
           votre appareil (aucune connexion nécessaire). Voici comment procéder :
         </p>
+        <!-- Début : fonctionnalités PWA / ajout à l'écran d'accueil -->
+        <div class="pwa-install-container">
+          <button id="btn-install" class="btn-install" hidden>
+            <span aria-hidden="true">📲</span>
+            Ajouter à l’écran d’accueil
+          </button>
+        </div>
+        <div id="ios-a2hs-hint" class="ios-a2hs-hint" hidden>
+          <button type="button" aria-label="Masquer le rappel" data-ios-hint-close>&times;</button>
+          Pour ajouter ce planning sur votre écran d’accueil iPhone ou iPad&nbsp;:
+          ouvrez le menu <strong>Partager</strong> de Safari puis choisissez
+          <strong>«&nbsp;Sur l’écran d’accueil&nbsp;»</strong>.
+        </div>
+        <!-- Fin : fonctionnalités PWA / ajout à l'écran d'accueil -->
         <ul>
           <li>
             <strong>Onglets</strong> (menu horizontal ou ☰ sur mobile) : choisissez
@@ -2032,6 +2100,12 @@
       <div class="driver-comm-section">
         <h4>SMS km & points</h4>
         <div class="driver-comm-field">
+          <label for="driver-contact-select">Destinataire</label>
+          <select id="driver-contact-select">
+            <option value="">-- Sélectionner --</option>
+          </select>
+        </div>
+        <div class="driver-comm-field">
           <label for="driver-km-input">Kilomètres</label>
           <input type="number" id="driver-km-input" min="0" step="1" />
         </div>
@@ -2058,24 +2132,12 @@
         <div class="driver-comm-actions">
           <button class="primary" id="driver-copy-message" type="button">Copier</button>
           <button class="secondary" id="driver-clear-message" type="button">Effacer</button>
+          <button class="primary" id="driver-open-sms" type="button">Ouvrir l'application SMS</button>
         </div>
       </div>
       <div class="driver-comm-section">
         <h4>Numéros utiles</h4>
-        <div class="driver-contacts">
-          <div class="driver-contact">
-            <span>Frigo Est</span>
-            <a href="tel:+33327558227">03 27 55 82 27</a>
-          </div>
-          <div class="driver-contact">
-            <span>Exploitation</span>
-            <a href="tel:+33642109149">06 42 10 91 49</a>
-          </div>
-          <div class="driver-contact">
-            <span>PDG Damien Panel</span>
-            <a href="tel:+33680599661">06 80 59 96 61</a>
-          </div>
-        </div>
+        <div class="driver-contacts" id="driver-contacts-list"></div>
       </div>
     </div>
     <footer class="site-footer">
@@ -2130,6 +2192,30 @@
           label: "Incident ou panne",
           text:
             "Urgent : incident survenu (préciser). Véhicule en sécurité, j'attends vos instructions.",
+        },
+      ];
+      const DRIVER_CONTACTS = [
+        {
+          id: "frigo-est",
+          label: "Frigo Est (standard)",
+          displayName: "Frigo Est",
+          phone: "+33327558227",
+          displayPhone: "03 27 55 82 27",
+        },
+        {
+          id: "exploitation",
+          label: "Exploitation",
+          displayName: "Exploitation",
+          phone: "+33642109149",
+          displayPhone: "06 42 10 91 49",
+        },
+        {
+          id: "pdg",
+          label: "PDG Damien Panel",
+          displayName: "PDG Damien Panel",
+          phone: "+33680599661",
+          displayPhone: "06 80 59 96 61",
+          allowSms: false,
         },
       ];
       const defaultTicket = () => ({
@@ -2361,6 +2447,40 @@
           option.textContent = template.label;
           select.appendChild(option);
         });
+      }
+
+      function populateDriverContacts(select, listContainer) {
+        const smsContacts = DRIVER_CONTACTS.filter(
+          (contact) => contact.allowSms !== false
+        );
+        if (select) {
+          select.innerHTML = "";
+          const placeholder = document.createElement("option");
+          placeholder.value = "";
+          placeholder.textContent = "-- Sélectionner --";
+          select.appendChild(placeholder);
+          smsContacts.forEach((contact) => {
+            const option = document.createElement("option");
+            option.value = contact.id;
+            option.textContent = contact.label;
+            select.appendChild(option);
+          });
+        }
+        if (listContainer) {
+          listContainer.innerHTML = "";
+          DRIVER_CONTACTS.forEach((contact) => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "driver-contact";
+            const name = document.createElement("span");
+            name.textContent = contact.displayName || contact.label;
+            const link = document.createElement("a");
+            link.href = `tel:${contact.phone}`;
+            link.textContent = contact.displayPhone || contact.phone;
+            wrapper.appendChild(name);
+            wrapper.appendChild(link);
+            listContainer.appendChild(wrapper);
+          });
+        }
       }
 
       function formatDateTimeFr(value) {
@@ -2838,8 +2958,12 @@
         const buildBtn = document.getElementById("driver-build-message");
         const kmInput = document.getElementById("driver-km-input");
         const pointsInput = document.getElementById("driver-points-input");
+        const smsBtn = document.getElementById("driver-open-sms");
+        const contactSelect = document.getElementById("driver-contact-select");
+        const contactsList = document.getElementById("driver-contacts-list");
 
         populateDriverTemplates(templateSelect);
+        populateDriverContacts(contactSelect, contactsList);
 
         btn.addEventListener("click", () => toggleDriverPanel(panel, btn));
         closeBtn?.addEventListener("click", () =>
@@ -2879,6 +3003,31 @@
         clearBtn?.addEventListener("click", () => {
           if (messageField) messageField.value = "";
           if (templateSelect) templateSelect.value = "";
+        });
+
+        smsBtn?.addEventListener("click", () => {
+          if (!messageField || !messageField.value.trim()) {
+            alert("Rédigez ou sélectionnez d'abord un message.");
+            messageField?.focus();
+            return;
+          }
+          if (!contactSelect || !contactSelect.value) {
+            alert("Sélectionnez un destinataire pour le SMS.");
+            contactSelect?.focus();
+            return;
+          }
+          const selectedContact = DRIVER_CONTACTS.find(
+            (contact) =>
+              contact.id === contactSelect.value && contact.allowSms !== false
+          );
+          if (!selectedContact) {
+            alert("Ce contact ne peut pas recevoir de SMS.");
+            return;
+          }
+          const phoneNumber = selectedContact.phone.replace(/\s+/g, "");
+          const smsBody = encodeURIComponent(messageField.value);
+          const smsUrl = `sms:${phoneNumber}${smsBody ? `?body=${smsBody}` : ""}`;
+          window.location.href = smsUrl;
         });
       }
 
@@ -3121,6 +3270,95 @@
         document.body.classList.add(className);
       }
 
+      /* Début : fonctionnalités PWA / ajout à l'écran d'accueil */
+      const IOS_HINT_DISMISSED_KEY = "iosA2hsHintDismissed";
+      let deferredInstallPrompt = null;
+
+      function registerServiceWorker() {
+        if (!("serviceWorker" in navigator)) return;
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("./service-worker.js")
+            .catch((error) =>
+              console.error("Service worker registration failed:", error)
+            );
+        });
+      }
+
+      function initPwaFeatures() {
+        const installButton = document.getElementById("btn-install");
+        const iosHint = document.getElementById("ios-a2hs-hint");
+        const iosHintClose = iosHint?.querySelector("[data-ios-hint-close]");
+        const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+        const isInStandaloneMode =
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.navigator.standalone;
+
+        registerServiceWorker();
+
+        if (
+          iosHint &&
+          isIos &&
+          !isInStandaloneMode &&
+          !localStorage.getItem(IOS_HINT_DISMISSED_KEY)
+        ) {
+          iosHint.hidden = false;
+        }
+
+        iosHintClose?.addEventListener("click", () => {
+          iosHint.hidden = true;
+          localStorage.setItem(IOS_HINT_DISMISSED_KEY, "1");
+        });
+
+        if (isIos) {
+          if (installButton) {
+            installButton.hidden = !!isInStandaloneMode;
+            installButton.addEventListener("click", (event) => {
+              event.preventDefault();
+              if (iosHint) {
+                iosHint.hidden = false;
+                iosHint.scrollIntoView({ behavior: "smooth", block: "center" });
+              } else {
+                alert(
+                  "Sur iOS, utilisez le menu Partager puis « Sur l'écran d'accueil »."
+                );
+              }
+            });
+          }
+          return;
+        }
+
+        if (installButton && isInStandaloneMode) {
+          installButton.hidden = true;
+        }
+
+        window.addEventListener("beforeinstallprompt", (event) => {
+          event.preventDefault();
+          deferredInstallPrompt = event;
+          if (installButton && !isInStandaloneMode) {
+            installButton.hidden = false;
+          }
+        });
+
+        window.addEventListener("appinstalled", () => {
+          deferredInstallPrompt = null;
+          if (installButton) installButton.hidden = true;
+        });
+
+        installButton?.addEventListener("click", async () => {
+          if (!deferredInstallPrompt) return;
+          const result = await deferredInstallPrompt.prompt();
+          deferredInstallPrompt = null;
+          if (installButton) {
+            installButton.hidden = true;
+          }
+          if (result?.outcome) {
+            localStorage.setItem("a2hsPromptOutcome", result.outcome);
+          }
+        });
+      }
+      /* Fin : fonctionnalités PWA / ajout à l'écran d'accueil */
+
       function init() {
         populateForms();
         attachInputs();
@@ -3178,7 +3416,10 @@
         });
       }
 
-      document.addEventListener("DOMContentLoaded", init);
+      document.addEventListener("DOMContentLoaded", () => {
+        init();
+        initPwaFeatures();
+      });
     </script>
   </body>
 </html>
