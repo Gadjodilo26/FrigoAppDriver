@@ -1041,9 +1041,10 @@
       <section class="meta-card">
         <h2>Organisation des fichiers</h2>
         <p>
-          Avant de fermer la page, cliquez sur <strong>Enregistrer vos données</strong>
-          pour récupérer un fichier JSON. Rangez-le ensuite dans le dossier fourni ci-dessous
-          afin de retrouver facilement vos plannings et tickets carburant le lendemain.
+          Toutes vos saisies restent mémorisées automatiquement sur l’appareil, même si vous fermez
+          la page. Pour être 100% tranquille (changement de téléphone, nettoyage du navigateur, partage
+          avec le bureau), exportez malgré tout un fichier JSON grâce au bouton
+          <strong>Enregistrer vos données</strong> puis rangez-le dans l’arborescence ci-dessous.
         </p>
         <p>
           1. Téléchargez la structure de dossier recommandée.<br />
@@ -2152,11 +2153,16 @@
     </footer>
 
     <script>
-      // Gestion du stockage local et des calculs d'heures pour chaque jour
+      // -----------------------------
+      // Configuration et état global
+      // -----------------------------
+      // Toutes les valeurs métier de la semaine sont centralisées dans l'objet "state"
+      // et sérialisées dans localStorage afin que l'utilisateur retrouve son brouillon.
       const STORAGE_KEY = "planningHebdoV2";
       const PRINT_PLANNING_CLASS = "print-planning";
       const PRINT_FUEL_CLASS = "print-fuel";
       let currentPanel = "lundi";
+      let weekSummaryIntervalId = null;
       const days = [
         "lundi",
         "mardi",
@@ -2172,6 +2178,7 @@
       const MAX_TICKET_IMAGE_BYTES = 700 * 1024; // ~700 KB
       const MAX_SIGNATURE_IMAGE_DIMENSION = 1000;
       const MAX_SIGNATURE_IMAGE_BYTES = 450 * 1024; // ~450 KB
+      // Messages prédéfinis pour accélérer la communication chauffeur.
       const DRIVER_TEMPLATES = [
         {
           id: "daily-report",
@@ -2198,6 +2205,8 @@
             "Urgent : incident survenu (préciser). Véhicule en sécurité, j'attends vos instructions.",
         },
       ];
+      // Carnet d'adresses utilisé à la fois pour l'affichage des numéros utiles
+      // et pour la liste de destinataires SMS.
       const DRIVER_CONTACTS = [
         {
           id: "frigo-est",
@@ -2222,6 +2231,7 @@
           allowSms: false,
         },
       ];
+      // Fabriques d'objets de base pour les formulaires.
       const defaultTicket = () => ({
         date: "",
         vehicle: "",
@@ -2322,6 +2332,10 @@
       }
 
       // Charge l'état depuis le stockage local
+      /**
+       * Recharge l'état depuis localStorage et fusionne les structures manquantes
+       * (jours/tickets supplémentaires ajoutés dans une version ultérieure).
+       */
       function loadState() {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
@@ -2364,6 +2378,10 @@
         }
       }
 
+      /**
+       * Persiste l'état courant en localStorage puis rafraîchit l'aperçu.
+       * En cas d'échec (quota trop plein), on prévient l'utilisateur sans bloquer l'usage.
+       */
       function saveState() {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -2453,6 +2471,7 @@
         });
       }
 
+      // Alimente la liste déroulante (SMS) et l'encart de contacts utiles.
       function populateDriverContacts(select, listContainer) {
         const smsContacts = DRIVER_CONTACTS.filter(
           (contact) => contact.allowSms !== false
@@ -2548,6 +2567,23 @@
         if (!summary) return;
         const info = getCurrentWeekInfo();
         summary.textContent = `Semaine actuelle : n° ${info.week}, du ${info.start} au ${info.end} — ${info.datetime}`;
+      }
+
+      // Rafraîchit l'entête "Semaine actuelle" toutes les 60 s et à la reprise de focus.
+      function startWeekSummaryAutoUpdate() {
+        updateWeekSummary();
+        if (weekSummaryIntervalId) {
+          clearInterval(weekSummaryIntervalId);
+        }
+        weekSummaryIntervalId = setInterval(updateWeekSummary, 60000);
+        if (!startWeekSummaryAutoUpdate.listenerAttached) {
+          document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) {
+              updateWeekSummary();
+            }
+          });
+          startWeekSummaryAutoUpdate.listenerAttached = true;
+        }
       }
 
       // Active/désactive les champs d'un jour selon le statut d'absence
@@ -2647,6 +2683,7 @@
         return formatMinutes(value);
       }
 
+      // Construit l'aperçu mosaïque des tickets carburant importés.
       function renderFuelCards() {
         const container = document.getElementById("fuel-preview-grid");
         if (!container) return;
@@ -2730,6 +2767,7 @@
         return str.charAt(0).toUpperCase() + str.slice(1);
       }
 
+      // Table de correspondance entre l'id des inputs quotidiens et les clés du state.
       const fieldMap = {
         date: "date",
         "debut-journee": "startDay",
@@ -2743,6 +2781,7 @@
         client: "client",
       };
 
+      // Synchronise chaque champ d'un jour avec l'objet state correspondant.
       function handleDayInput(event) {
         const { id, value, type, checked } = event.target;
         const parts = id.split("-");
@@ -2759,6 +2798,7 @@
         saveState();
       }
 
+      // Mémorise les champs "généraux" (semaine, chauffeur, observations).
       function handleMetaInput(event) {
         const { id, value } = event.target;
         if (id === "week-number") state.meta.weekNumber = value;
@@ -2770,6 +2810,7 @@
         saveState();
       }
 
+      // Passe un jour en repos/CP : les inputs deviennent inactifs et sont vidés.
       function handleAbsenceChange(event) {
         const day = event.target.dataset.absenceDay;
         if (!day || !state.days[day]) return;
@@ -2780,6 +2821,7 @@
         saveState();
       }
 
+      // Mise à jour des champs d'un ticket carburant.
       function handleTicketInput(event) {
         const { ticketIndex, ticketField } = event.target.dataset;
         if (ticketIndex === undefined || !ticketField) return;
@@ -2789,6 +2831,7 @@
         saveState();
       }
 
+      // Import d'une photo de ticket avec compression et limites de poids.
       async function handleTicketImage(event) {
         const { ticketIndex } = event.target.dataset;
         if (ticketIndex === undefined) return;
@@ -2818,6 +2861,7 @@
         }
       }
 
+      // Helpers image : lecture fichier -> dataURL, puis conversion en <img>.
       function readFileAsDataURL(file) {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -2846,6 +2890,7 @@
         return optimizeTicketImageDataUrl(initialDataUrl);
       }
 
+      // Compression des images côté client pour ne pas saturer localStorage.
       async function optimizeTicketImageDataUrl(dataUrl) {
         if (!dataUrl || typeof dataUrl !== "string") return "";
         if (!dataUrl.startsWith("data:image")) return dataUrl;
@@ -2929,6 +2974,7 @@
         return dataUrl;
       }
 
+      // Écouteurs sur tous les inputs horaires et métadonnées.
       function attachInputs() {
         document
           .querySelectorAll(
@@ -2950,6 +2996,7 @@
           );
       }
 
+      // Initialise la console ✉️ (modèles, boutons copier/SMS, sélection du contact).
       function setupDriverCommunication() {
         const btn = document.getElementById("driver-comm-btn");
         const panel = document.getElementById("driver-comm-panel");
@@ -3045,6 +3092,7 @@
         btn.setAttribute("aria-expanded", String(shouldOpen));
       }
 
+      // Inputs et photos des tickets carburant.
       function attachTicketInputs() {
         document
           .querySelectorAll("[data-ticket-field]")
@@ -3054,6 +3102,7 @@
           .forEach((input) => input.addEventListener("change", handleTicketImage));
       }
 
+      // Bouton ☰ sur mobile pour ouvrir/fermer la barre d'onglets.
       function setupNavToggle() {
         const toggle = document.getElementById("nav-toggle");
         const tabs = document.querySelector(".tabs");
@@ -3065,6 +3114,8 @@
         });
       }
 
+      // Rend le bouton "Afficher/Masquer l'aperçu des tickets" réactif
+      // et synchronise son libellé avec la présence de données.
       function setupFuelPreviewToggle() {
         const toggle = document.getElementById("toggle-fuel-preview");
         const wrapper = document.getElementById("fuel-preview-wrapper");
@@ -3092,6 +3143,7 @@
           : "Afficher l'aperçu des tickets";
       }
 
+      // Branche les boutons "Enregistrer/Charger" et les actions associées.
       function setupSaveLoadButtons() {
         const importInput = document.getElementById("import-input");
         document.querySelectorAll(".btn-save").forEach((btn) => {
@@ -3118,6 +3170,7 @@
         }
       }
 
+      // Gestion des onglets pliants : on applique la classe .active et on scrolle vers la section.
       function attachNavigation() {
         const buttons = document.querySelectorAll(".tabs button");
         const tabsContainer = document.querySelector(".tabs");
@@ -3151,6 +3204,7 @@
         }
       }
 
+      // Gestion générique des imports (signature ou JSON complet).
       async function handleFileInput(input, key) {
         const file = input.files[0];
         if (!file) return;
@@ -3174,6 +3228,7 @@
         }
       }
 
+      // Export JSON (avec indentation) pour conserver une trace hors navigateur.
       function exportData() {
         const blob = new Blob([JSON.stringify(state, null, 2)], {
           type: "application/json",
@@ -3186,6 +3241,7 @@
         URL.revokeObjectURL(url);
       }
 
+      // Import JSON puis harmonisation des structures (jours, tickets, images compressées).
       function importData(file) {
         const reader = new FileReader();
         reader.onload = async () => {
@@ -3262,6 +3318,7 @@
         reader.readAsText(file);
       }
 
+      // Active la classe d'impression demandée puis lance window.print().
       function triggerPrint(mode) {
         applyPrintClass(mode);
         window.print();
@@ -3278,6 +3335,7 @@
       const IOS_HINT_DISMISSED_KEY = "iosA2hsHintDismissed";
       let deferredInstallPrompt = null;
 
+      // Enregistrement lazy du service worker (après onload) pour l'installabilité.
       function registerServiceWorker() {
         if (!("serviceWorker" in navigator)) return;
         window.addEventListener("load", () => {
@@ -3418,6 +3476,8 @@
             PRINT_FUEL_CLASS
           );
         });
+
+        startWeekSummaryAutoUpdate();
       }
 
       document.addEventListener("DOMContentLoaded", () => {
